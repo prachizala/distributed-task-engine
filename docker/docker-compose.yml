@@ -1,0 +1,96 @@
+services:
+  # 1. PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: dte_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-task_engine_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-task_engine_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Redis Cache & Broker
+  redis:
+    image: redis:7-alpine
+    container_name: dte_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 3. FastAPI REST Service
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: dte_api
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-task_engine_db}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - ENVIRONMENT=production
+      - DEBUG=False
+    ports:
+      - "8000:8000"
+
+  # 4. Celery Distributed Worker
+  celery_worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: dte_worker
+    restart: always
+    command: celery -A app.workers.celery_app.celery_app worker --loglevel=info --concurrency=4
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-task_engine_db}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+
+  # 5. Flower - Real-Time Celery Monitor UI
+  flower:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: dte_flower
+    restart: always
+    command: celery -A app.workers.celery_app.celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+
+volumes:
+  postgres_data:
+  redis_data:
