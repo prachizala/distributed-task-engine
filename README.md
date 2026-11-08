@@ -51,6 +51,8 @@ flowchart TD
 | Capability | Technical Implementation | Value |
 |---|---|---|
 | **Non-Blocking Ingestion** | FastAPI async endpoints + Uvicorn ASGI | Sub-millisecond job admission and horizontal throughput |
+| **Enqueue Idempotency** | Redis `SETNX` via `Idempotency-Key` header with TTL cache | Prevents duplicate task dispatches & double-billing on network retries |
+| **Crash-Resilient Workers** | Celery `acks_late=True` & `task_reject_on_worker_lost=True` | Automatic message requeue if a worker container OOMs or crashes |
 | **Distributed Task Queue** | Celery 5.4 + Redis 7 Broker | Handles heavy computation and external I/O without blocking user threads |
 | **Persistent Audit Logging** | PostgreSQL 16 + Async SQLAlchemy 2.0 | Complete execution history, error traces, and duration profiling |
 | **Intelligent Rate Limiting** | Redis Sliding Window / Token-Bucket (`ZADD`/`ZREMRANGEBYSCORE`) | Prevents API degradation from traffic spikes or DDoS |
