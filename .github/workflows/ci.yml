@@ -43,8 +43,8 @@ jobs:
 
       - name: Ruff Code Quality & Linting
         run: |
-          ruff check .
-          ruff format --check .
+          python -m ruff check .
+          python -m ruff format --check .
 
       - name: Run Pytest Suite with Coverage
         env:
@@ -52,7 +52,7 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: test-secret-key-for-github-actions-ci-cd-32chars
         run: |
-          pytest -v --asyncio-mode=auto
+          python -m pytest -v --asyncio-mode=auto
 
   docker-build:
     name: Docker Multi-Stage Build Check
