@@ -47,3 +47,29 @@ async def test_list_tasks_and_metrics_summary(async_client: AsyncClient):
     assert metrics_resp.status_code == 200
     metrics = metrics_resp.json()
     assert metrics["total_jobs"] >= 2
+
+
+@pytest.mark.asyncio
+async def test_enqueue_idempotency_with_client_key(async_client: AsyncClient):
+    key = "client-tx-uuid-998877"
+    task_payload = {
+        "task_name": "tasks.generate_pdf_report",
+        "parameters": {"report_name": "Financial_Audit_2026"},
+        "priority": "critical",
+    }
+    # First submit
+    resp1 = await async_client.post(
+        "/api/v1/tasks/submit", json=task_payload, headers={"Idempotency-Key": key}
+    )
+    assert resp1.status_code == 202
+    data1 = resp1.json()
+
+    # Second submit with the identical Idempotency-Key
+    resp2 = await async_client.post(
+        "/api/v1/tasks/submit", json=task_payload, headers={"Idempotency-Key": key}
+    )
+    assert resp2.status_code in (200, 202)
+    data2 = resp2.json()
+
+    # Must return the EXACT same job_id and no duplicate created
+    assert data1["job_id"] == data2["job_id"]

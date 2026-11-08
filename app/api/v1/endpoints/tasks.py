@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -16,6 +16,7 @@ from app.schemas.task import (
     TaskJobResponse,
     TaskMetricsSummary,
 )
+from app.services.idempotency import idempotency_service
 from app.workers.celery_app import celery_app
 
 router = APIRouter()
@@ -30,9 +31,20 @@ router = APIRouter()
 )
 async def submit_task(
     payload: TaskCreateRequest,
+    idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
     db: AsyncSession = Depends(get_db_session),
     current_user: Optional[User] = Depends(get_current_user),
 ):
+    # Enqueue Idempotency check: return existing job if duplicate request
+    if idempotency_key:
+        existing_job_id = await idempotency_service.get_existing_job_id(idempotency_key)
+        if existing_job_id:
+            stmt = select(TaskJob).where(TaskJob.job_id == existing_job_id)
+            res = await db.execute(stmt)
+            existing_job = res.scalar_one_or_none()
+            if existing_job:
+                return existing_job
+
     job_id = f"job_{uuid.uuid4().hex[:12]}"
     celery_id: Optional[str] = None
 
@@ -72,6 +84,11 @@ async def submit_task(
     db.add(audit_log)
     await db.commit()
     await db.refresh(task_job)
+
+    # Record idempotency mapping for future client retries
+    if idempotency_key:
+        await idempotency_service.record_job_id(idempotency_key, job_id)
+
     return task_job
 
 
