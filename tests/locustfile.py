@@ -4,8 +4,9 @@ Simulates concurrent background job enqueuing, client-side idempotency collision
 and status polling throughput against distributed-task-engine.
 """
 
-from locust import HttpUser, task, between
 import uuid
+
+from locust import HttpUser, between, task
 
 
 class TaskEngineLoadUser(HttpUser):
