@@ -22,11 +22,19 @@ class BenchmarkMetrics:
 
     @property
     def p95_latency_ms(self) -> float:
-        return statistics.quantiles(self.latencies_ms, n=20)[18] if len(self.latencies_ms) >= 20 else self.avg_latency_ms
+        return (
+            statistics.quantiles(self.latencies_ms, n=20)[18]
+            if len(self.latencies_ms) >= 20
+            else self.avg_latency_ms
+        )
 
     @property
     def p99_latency_ms(self) -> float:
-        return statistics.quantiles(self.latencies_ms, n=100)[98] if len(self.latencies_ms) >= 100 else self.avg_latency_ms
+        return (
+            statistics.quantiles(self.latencies_ms, n=100)[98]
+            if len(self.latencies_ms) >= 100
+            else self.avg_latency_ms
+        )
 
 
 class ConcurrencyBenchmarkRunner:

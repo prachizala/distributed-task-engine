@@ -19,7 +19,7 @@ class TaskEngineLoadUser(HttpUser):
         headers = {"X-Idempotency-Key": client_key, "Content-Type": "application/json"}
         payload = {
             "task_type": "data_aggregation",
-            "parameters": {"batch_size": 500, "region": "ap-south-1"}
+            "parameters": {"batch_size": 500, "region": "ap-south-1"},
         }
         self.client.post("/api/v1/tasks/enqueue", json=payload, headers=headers)
 
@@ -28,10 +28,7 @@ class TaskEngineLoadUser(HttpUser):
         """Simulates race-condition collision where the same key is submitted twice simultaneously."""
         colliding_key = "collision-test-static-key"
         headers = {"X-Idempotency-Key": colliding_key, "Content-Type": "application/json"}
-        payload = {
-            "task_type": "report_generation",
-            "parameters": {"format": "pdf"}
-        }
+        payload = {"task_type": "report_generation", "parameters": {"format": "pdf"}}
         self.client.post("/api/v1/tasks/enqueue", json=payload, headers=headers)
 
     @task(5)
