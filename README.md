@@ -19,12 +19,12 @@ Designed to offload resource-intensive workloads (ETL ingestion, PDF compilation
 
 ```mermaid
 flowchart LR
-    subgraph ClientIngress ["1. Client & Web Layer"]
+    subgraph ClientIngress ["1. Client and Web Layer"]
         Client["Client / API Consumer"] -->|HTTP REST / JSON| FastApi["Client / FastAPI Web Service\n(:8000 / ASGI Gateway)"]
     end
 
-    subgraph RateLimitEnqueue ["2. Rate Limiting & Queue"]
-        FastApi -->|Token Validation & Sliding-Window Check| RateLimiter["Redis Enqueue /\nSliding-Window Rate Limiter\n(ZADD / ZREMRANGEBYSCORE)"]
+    subgraph RateLimitEnqueue ["2. Rate Limiting and Queue"]
+        FastApi -->|Token Validation and Sliding-Window Check| RateLimiter["Redis Enqueue /\nSliding-Window Rate Limiter\n(ZADD / ZREMRANGEBYSCORE)"]
         RateLimiter -->|Enqueue Job Message| Broker[("Redis Task Broker\n(DB 1: celery)")]
     end
 
@@ -33,9 +33,9 @@ flowchart LR
         Workers -->|Execute Async Jobs| JobExec["Task Execution Engine\n(ETL / PDF / Batch Analytics)"]
     end
 
-    subgraph PersistenceAudit ["4. Persistence & Audit"]
-        JobExec -->|Persist Task Lifecycle & State| Postgres[("PostgreSQL Persistence /\nAudit Log (Async SQLAlchemy 2.0)")]
-        FastApi -.->|Query Job Status & History| Postgres
+    subgraph PersistenceAudit ["4. Persistence and Audit"]
+        JobExec -->|Persist Task Lifecycle and State| Postgres[("PostgreSQL Persistence /\nAudit Log (Async SQLAlchemy 2.0)")]
+        FastApi -.->|Query Job Status and History| Postgres
     end
 
     subgraph Observability ["Observability"]
