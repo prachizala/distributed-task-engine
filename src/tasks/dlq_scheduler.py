@@ -13,5 +13,5 @@ class DLQRetryPolicy:
         """Returns exponential backoff interval in seconds: min(base * 2^attempt, max_delay)."""
         if retry_attempt >= self.max_retries:
             return -1  # Send to permanent Dead-Letter Queue
-        delay = self.base_delay * (2 ** retry_attempt)
+        delay = self.base_delay * (2**retry_attempt)
         return min(delay, self.max_delay)
